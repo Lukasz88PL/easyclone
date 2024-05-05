@@ -7,80 +7,97 @@
 # System Supported: Arch , Ubuntu/Debian , Fedora & Termux ( amd64 & arm64 )
 #=============================================================
 
+# Function to print colored output
 cecho() {
-  local code="\033["
-  case "$1" in
-  black | bk) color="${code}0;30m" ;;
-  red | r) color="${code}1;31m" ;;
-  green | g) color="${code}1;32m" ;;
-  yellow | y) color="${code}1;33m" ;;
-  blue | b) color="${code}1;34m" ;;
-  purple | p) color="${code}1;35m" ;;
-  cyan | c) color="${code}1;36m" ;;
-  gray | gr) color="${code}0;37m" ;;
-  *) local text="$1" ;;
-  esac
-  [ -z "$text" ] && local text="$color$2${code}0m"
-  echo -e "$text"
+    local color_code="\033["
+    case "$1" in
+        black | bk) color="${color_code}0;30m" ;;
+        red | r) color="${color_code}1;31m" ;;
+        green | g) color="${color_code}1;32m" ;;
+        yellow | y) color="${color_code}1;33m" ;;
+        blue | b) color="${color_code}1;34m" ;;
+        purple | p) color="${color_code}1;35m" ;;
+        cyan | c) color="${color_code}1;36m" ;;
+        gray | gr) color="${color_code}0;37m" ;;
+        *) local text="$1" ;;
+    esac
+    [ -z "$text" ] && local text="$color$2${color_code}0m"
+    echo -e "$text"
 }
 
-# Variable
-conf="$HOME/easyclone/rc.conf"
-ehome="$(echo $HOME)"
-uflags="--fast-list --drive-server-side-across-configs --drive-acknowledge-abuse --drive-keep-revision-forever --stats=10s -vP --drive-use-trash=false --drive-stop-on-upload-limit --user-agent randomstringxyz --log-file $HOME/easyclone/log.txt"
-jc="$(ls -l $HOME/easyclone/accounts | egrep -c '^-')"
-rjc1="$(shuf -i 1-$jc -n 1)"
-rjc2="$(shuf -i 1-$jc -n 1)"
+# Configuration
+CONFIG_FILE="$HOME/easyclone/rc.conf"
+LOG_FILE="$HOME/easyclone/log.txt"
+HOME_DIR="$(echo $HOME)"
+GCLONE_FLAGS="--fast-list --drive-server-side-across-configs --drive-acknowledge-abuse --drive-keep-revision-forever --stats=10s -vP --drive-use-trash=false --drive-stop-on-upload-limit --user-agent randomstringxyz --log-file $LOG_FILE"
 
-# Functions
-fsrc() {
-  : > $HOME/easyclone/log.txt
-  sed -i '/^team_drive/d' $conf
-  sed -i '/^root_folder_id/d' $conf
-  cecho b "[When you need to enter folder id/url , you can enter b to choose a folder id from your bookmark.txt]"
-  read -e -p "Enter the source folder id or url : " src
-  if [ "$src" == "b" ]; then
-    cat $HOME/easyclone/bookmark.txt | nl -w1 -s'• '
-    echo
-    read -e -p "Enter the number corresponding to the folder_id which you want to use : " NUM
-    src="$(cat $HOME/easyclone/bookmark.txt | awk 'NF>1{print $NF}' | sed "${NUM}q;d")"
-  else
-    src=$(echo $src | sed -E 's~.*[/=]([01A-Z][-_[:alnum:]]+)([?/].*|$)~\1~')
-  fi
-  case $src in
-  0*)
-    sed -i "4iteam_drive = $src" $conf
-    ;;
-  1*)
-    sed -i "4iroot_folder_id = $src" $conf
-    ;;
-  esac
-  sed -ri "5s/[[:digit:]]+.json/$rjc1.json/" $conf
+# Function to select source folder
+select_source_folder() {
+    : > $LOG_FILE
+    sed -i '/^team_drive/d' $CONFIG_FILE
+    sed -i '/^root_folder_id/d' $CONFIG_FILE
+    cecho b "[When you need to enter folder id/url, you can enter 'b' to choose a folder id from your bookmark.txt]"
+    read -e -p "Enter the source folder id or url: " src_folder
+    if [ "$src_folder" == "b" ]; then
+        cat $HOME/easyclone/bookmark.txt | nl -w1 -s'• '
+        echo
+        read -e -p "Enter the number corresponding to the folder_id which you want to use: " num
+        src_folder="$(cat $HOME/easyclone/bookmark.txt | awk 'NF>1{print $NF}' | sed "${num}q;d")"
+    else
+        src_folder=$(echo $src_folder | sed -E 's~.*[/=]([01A-Z][-_[:alnum:]]+)([?/].*|$)~\1~')
+    fi
+    case $src_folder in
+        0*)
+            sed -i "4iteam_drive = $src_folder" $CONFIG_FILE
+            ;;
+        1*)
+            sed -i "4iroot_folder_id = $src_folder" $CONFIG_FILE
+            ;;
+    esac
+    sed -ri "5s/[[:digit:]]+.json/$(shuf -i 1-$(ls -l $HOME/easyclone/accounts | egrep -c '^-') -n 1).json/" $CONFIG_FILE
 }
 
-fdst() {
-  read -e -p "Enter the destination folder id or url : " dst
-  if [ "$dst" == "b" ]; then
-    cat $HOME/easyclone/bookmark.txt | nl -w1 -s'• '
-    echo
-    read -e -p "Enter the number corresponding to the folder_id which you want to use : " NUM
-    dst="$(cat $HOME/easyclone/bookmark.txt | awk 'NF>1{print $NF}' | sed "${NUM}q;d")"
-  else
-    dst=$(echo $dst | sed -E 's~.*[/=]([01A-Z][-_[:alnum:]]+)([?/].*|$)~\1~')
-  fi
-  case $dst in
-  0*)
-    sed -i "11iteam_drive = $dst" $conf
-    ;;
-  1*)
-    sed -i "11iroot_folder_id = $dst" $conf
-    ;;
-  esac
-  sed -ri "12s/[[:digit:]]+.json/$rjc2.json/" $conf
+# Function to select destination folder
+select_destination_folder() {
+    read -e -p "Enter the destination folder id or url: " dst_folder
+    if [ "$dst_folder" == "b" ]; then
+        cat $HOME/easyclone/bookmark.txt | nl -w1 -s'• '
+        echo
+        read -e -p "Enter the number corresponding to the folder_id which you want to use: " num
+        dst_folder="$(cat $HOME/easyclone/bookmark.txt | awk 'NF>1{print $NF}' | sed "${num}q;d")"
+    else
+        dst_folder=$(echo $dst_folder | sed -E 's~.*[/=]([01A-Z][-_[:alnum:]]+)([?/].*|$)~\1~')
+    fi
+    case $dst_folder in
+        0*)
+            sed -i "11iteam_drive = $dst_folder" $CONFIG_FILE
+            ;;
+        1*)
+            sed -i "11iroot_folder_id = $dst_folder" $CONFIG_FILE
+            ;;
+    esac
+    sed -ri "12s/[[:digit:]]+.json/$(shuf -i 1-$(ls -l $HOME/easyclone/accounts | egrep -c '^-') -n 1).json/" $CONFIG_FILE
 }
 
+# Function to install gclone
+install_gclone() {
+    if ! command -v gclone > /dev/null; then
+        cecho r "gclone is not installed. Please run the setup script to install it."
+        exit 1
+    fi
+}
+
+# Function to handle logging
+log() {
+    local level="$1"
+    local message="$2"
+    timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "[$timestamp] [$level] $message" >> $LOG_FILE
+}
+
+# Main script
 while true; do
-  cat << EOF
+    cat << EOF
 ┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 ┋1) Copy
 ┋    (Copy files from source to dest, skipping already copied)
@@ -123,64 +140,65 @@ while true; do
 ┋┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 EOF
 
-  echo
-  read -e -p "Enter your input : " opt
-  echo
-  case $opt in
-  1)
-    cecho y "Copy option has been selected"
-    fsrc 
-    fdst
     echo
-    cecho b "Do you want to use --ignore-existing flag for this process ?"
-    cecho b "[Only use it if your source/destination doesn't contain modification of any file overwritten with same name as even after having different size they will be considered equal and ignored]"
-    read -e -p "Enter Your Input [y/n] : " ig
-    case $ig in
-    [Yy]*)
-      gclone --config=$conf copy src: dst: $uflags --ignore-existing
-      ;;
-    [Nn]*)
-      gclone --config=$conf copy src: dst: $uflags
-      ;;
-    esac
-    ;;
-  2)
-    cecho y "Move option has been selected"
-    fsrc
-    fdst
+    read -e -p "Enter your input: " user_input
     echo
-    cecho b "Do you want to use --ignore-existing flag for this process ?"
-    cecho b "[Only use it if your source/destination doesn't contain modification of any file overwritten with same name as even after having different size they will be considered equal and ignored]"
-    read -e -p "Enter Your Input [y/n] : " ig
-    case $ig in
-    [Yy]*)
-      gclone --config=$conf move src: dst: $uflags --delete-empty-src-dirs --ignore-existing
-      ;;
-    [Nn]*)
-      gclone --config=$conf move src: dst: $uflags --delete-empty-src-dirs
-      ;;
-    esac
-    ;;
-  3)
-    cecho y "Sync option has been selected"
-    fsrc
-    fdst
-    echo
-    cecho b "Do you want to use --ignore-existing flag for this process ?"
-    cecho b "[Only use it if your source/destination doesn't contain modification of any file overwritten with same name as even after having different size they will be considered equal and ignored]"
-    read -e -p "Enter Your Input [y/n] : " ig
-    case $ig in
-    [Yy]*)
-      gclone --config=$conf sync src: dst: $uflags --ignore-existing
-      ;;
-    [Nn]*)
-      gclone --config=$conf sync src: dst: $uflags
-      ;;
-    esac
-    ;;
-  4)
-    cecho y "Dedupe option has been selected"
-    cat << EOF
+
+    case $user_input in
+        1)
+            cecho y "Copy option has been selected"
+            select_source_folder
+            select_destination_folder
+            echo
+            cecho b "Do you want to use --ignore-existing flag for this process?"
+            cecho b "[Only use it if your source/destination doesn't contain modification of any file overwritten with same name as even after having different size they will be considered equal and ignored]"
+            read -e -p "Enter Your Input [y/n]: " ignore_existing
+            case $ignore_existing in
+                [Yy]*)
+                    gclone --config=$CONFIG_FILE copy src: dst: $GCLONE_FLAGS --ignore-existing
+                    ;;
+                [Nn]*)
+                    gclone --config=$CONFIG_FILE copy src: dst: $GCLONE_FLAGS
+                    ;;
+            esac
+            ;;
+        2)
+            cecho y "Move option has been selected"
+            select_source_folder
+            select_destination_folder
+            echo
+            cecho b "Do you want to use --ignore-existing flag for this process?"
+            cecho b "[Only use it if your source/destination doesn't contain modification of any file overwritten with same name as even after having different size they will be considered equal and ignored]"
+            read -e -p "Enter Your Input [y/n]: " ignore_existing
+            case $ignore_existing in
+                [Yy]*)
+                    gclone --config=$CONFIG_FILE move src: dst: $GCLONE_FLAGS --delete-empty-src-dirs --ignore-existing
+                    ;;
+                [Nn]*)
+                    gclone --config=$CONFIG_FILE move src: dst: $GCLONE_FLAGS --delete-empty-src-dirs
+                    ;;
+            esac
+            ;;
+        3)
+            cecho y "Sync option has been selected"
+            select_source_folder
+            select_destination_folder
+            echo
+            cecho b "Do you want to use --ignore-existing flag for this process?"
+            cecho b "[Only use it if your source/destination doesn't contain modification of any file overwritten with same name as even after having different size they will be considered equal and ignored]"
+            read -e -p "Enter Your Input [y/n]: " ignore_existing
+            case $ignore_existing in
+                [Yy]*)
+                    gclone --config=$CONFIG_FILE sync src: dst: $GCLONE_FLAGS --ignore-existing
+                    ;;
+                [Nn]*)
+                    gclone --config=$CONFIG_FILE sync src: dst: $GCLONE_FLAGS
+                    ;;
+            esac
+            ;;
+        4)
+            cecho y "Dedupe option has been selected"
+            cat << EOF
 ┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 ┋1) Interactive
 ┋    (Use Dedupe Interactively)
@@ -210,58 +228,57 @@ EOF
 ┋    (Restart the script from Main Menu)
 ┋┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 EOF
-    echo
-    read -e -p "Enter the Dedupe Operation Mode (1-9) : " dm
-    if [[ $dm -ne 9 ]]; then
-      fsrc
-    fi
-    case $dm in
-    1)
-      cecho b "Dedupe Interactive option has been selected"
-      gclone --config=$conf dedupe --dedupe-mode interactive src: --fast-list --verbose=2
-      ;;
-    2)
-      cecho b "Dedupe Skip option has been selected"
-      gclone --config=$conf dedupe --dedupe-mode skip src: --fast-list --verbose=2
-      ;;
-    3)
-      cecho b "Dedupe First option has been selected"
-      gclone --config=$conf dedupe --dedupe-mode first src: --fast-list --verbose=2
-      ;;
-    4)
-      cecho b "Dedupe Newest option has been selected"
-      gclone --config=$conf dedupe --dedupe-mode newest src: --fast-list --verbose=2
-      ;;
-    5)
-      cecho b "Dedupe Oldest option has been selected"
-      gclone --config=$conf dedupe --dedupe-mode oldest src: --fast-list --verbose=2
-      ;;
-    6)
-      cecho b "Dedupe Largest option has been selected"
-      gclone --config=$conf dedupe --dedupe-mode largest src: --fast-list --verbose=2
-      ;;
-    7)
-      cecho b "Dedupe Smallest option has been selected"
-      gclone --config=$conf dedupe --dedupe-mode smallest src: --fast-list --verbose=2
-      ;;
-    8)
-      cecho b "Dedupe Rename option has been selected"
-      gclone --config=$conf dedupe --dedupe-mode rename src: --fast-list --verbose=2
-      ;;
-    9)
-      continue
-      ;;
-    esac
-
-    ;;
-  5)
-    cecho y "Size option has been selected"
-    fsrc
-    gclone --config=$conf size src: --fast-list
-    ;;
-  6)
-    cecho y "Listing option has been selected"
-    cat << EOF
+            echo
+            read -e -p "Enter the Dedupe Operation Mode (1-9): " dedupe_mode
+            if [[ $dedupe_mode -ne 9 ]]; then
+                select_source_folder
+            fi
+            case $dedupe_mode in
+                1)
+                    cecho b "Dedupe Interactive option has been selected"
+                    gclone --config=$CONFIG_FILE dedupe --dedupe-mode interactive src: --fast-list --verbose=2
+                    ;;
+                2)
+                    cecho b "Dedupe Skip option has been selected"
+                    gclone --config=$CONFIG_FILE dedupe --dedupe-mode skip src: --fast-list --verbose=2
+                    ;;
+                3)
+                    cecho b "Dedupe First option has been selected"
+                    gclone --config=$CONFIG_FILE dedupe --dedupe-mode first src: --fast-list --verbose=2
+                    ;;
+                4)
+                    cecho b "Dedupe Newest option has been selected"
+                    gclone --config=$CONFIG_FILE dedupe --dedupe-mode newest src: --fast-list --verbose=2
+                    ;;
+                5)
+                    cecho b "Dedupe Oldest option has been selected"
+                    gclone --config=$CONFIG_FILE dedupe --dedupe-mode oldest src: --fast-list --verbose=2
+                    ;;
+                6)
+                    cecho b "Dedupe Largest option has been selected"
+                    gclone --config=$CONFIG_FILE dedupe --dedupe-mode largest src: --fast-list --verbose=2
+                    ;;
+                7)
+                    cecho b "Dedupe Smallest option has been selected"
+                    gclone --config=$CONFIG_FILE dedupe --dedupe-mode smallest src: --fast-list --verbose=2
+                    ;;
+                8)
+                    cecho b "Dedupe Rename option has been selected"
+                    gclone --config=$CONFIG_FILE dedupe --dedupe-mode rename src: --fast-list --verbose=2
+                    ;;
+                9)
+                    continue
+                    ;;
+            esac
+            ;;
+        5)
+            cecho y "Size option has been selected"
+            select_source_folder
+            gclone --config=$CONFIG_FILE size src: --fast-list
+            ;;
+        6)
+            cecho y "Listing option has been selected"
+            cat << EOF
 ┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 ┋1) ls
 ┋    (List the objects in the path with size and path)
@@ -285,49 +302,49 @@ EOF
 ┋    (Restart the script from Main Menu)
 ┋┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 EOF
-    echo
-    read -e -p "Choose the listing type : " lt
-    if [[ $lt -ne 7 ]]; then
-      fsrc
-    fi
-    case $lt in
-    1)
-      cecho b "Listing / ls option has been selected"
-      gclone --config=$conf ls src:
-      ;;
-    2)
-      cecho b "Listing / lsd option has been selected"
-      gclone --config=$conf lsd src:
-      ;;
-    3)
-      cecho b "Listing / lsf option has been selected"
-      gclone --config=$conf lsf src:
-      ;;
-    4)
-      cecho b "Listing / lsjson option has been selected"
-      gclone --config=$conf lsjson src:
-      ;;
-    5)
-      cecho b "Listing / lsl option has been selected"
-      gclone --config=$conf lsl src:
-      ;;
-    6)
-      cecho b "Listing / tree option has been selected"
-      gclone --config=$conf tree src:
-      ;;
-    7)
-      continue
-      ;;
-    esac
-    ;;
-  7)
-    cecho y "NCDU option has been selected"
-    fsrc
-    gclone --config=$conf ncdu src: --fast-list 2>/dev/null
-    ;;
-  8)
-    cecho y "Upload | Download option has been selected"
-    cat << EOF
+            echo
+            read -e -p "Choose the listing type: " listing_type
+            if [[ $listing_type -ne 7 ]]; then
+                select_source_folder
+            fi
+            case $listing_type in
+                1)
+                    cecho b "Listing / ls option has been selected"
+                    gclone --config=$CONFIG_FILE ls src:
+                    ;;
+                2)
+                    cecho b "Listing / lsd option has been selected"
+                    gclone --config=$CONFIG_FILE lsd src:
+                    ;;
+                3)
+                    cecho b "Listing / lsf option has been selected"
+                    gclone --config=$CONFIG_FILE lsf src:
+                    ;;
+                4)
+                    cecho b "Listing / lsjson option has been selected"
+                    gclone --config=$CONFIG_FILE lsjson src:
+                    ;;
+                5)
+                    cecho b "Listing / lsl option has been selected"
+                    gclone --config=$CONFIG_FILE lsl src:
+                    ;;
+                6)
+                    cecho b "Listing / tree option has been selected"
+                    gclone --config=$CONFIG_FILE tree src:
+                    ;;
+                7)
+                    continue
+                    ;;
+            esac
+            ;;
+        7)
+            cecho y "NCDU option has been selected"
+            select_source_folder
+            gclone --config=$CONFIG_FILE ncdu src: --fast-list 2>/dev/null
+            ;;
+        8)
+            cecho y "Upload | Download option has been selected"
+            cat << EOF
 ┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 ┋1) Upload + Copy
 ┋    (Copy file/folder locally to drive, skipping already copied)
@@ -343,52 +360,54 @@ EOF
 ┋┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 ┋5) Return to Main Menu
 ┋    (Restart the script from Main Menu)
-┋┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
+┋┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 EOF
-    echo
-    read -e -p "Choose the appropriate option : " upl
-    if [[ $upl -ne 4 ]] && [[ $upl -ne 5 ]] ; then
-      read -e -p "Enter the path of the folder which you want to upload : " src
-      src="$(eval echo "$src")"
-      : > $HOME/easyclone/log.txt && sed -i '/^team_drive/d' $conf && sed -i '/^root_folder_id/d' $conf && fdst
-    fi
+            echo
+            read -e -p "Choose the appropriate option: " upload_option
+            if [[ $upload_option -ne 4 ]] && [[ $upload_option -ne 5 ]]; then
+                read -e -p "Enter the path of the folder which you want to upload: " source_path
+                source_path="$(eval echo "$source_path")"
+                : > $LOG_FILE && sed -i '/^team_drive/d' $CONFIG_FILE && sed -i '/^root_folder_id/d' $CONFIG_FILE && select_destination_folder
+            fi
 
-    if [ "$upl" == "4" ] ; then
-      fsrc
-      read -e -p "Enter the path where you want to download files locally : " dst
-      dst="$(eval echo "$dst")"
-    fi
-    case $upl in
-    1)
-      gclone --config=$conf copy "$src" dst: $uflags
-    ;;
-    2)
-      gclone --config=$conf move "$src" dst: $uflags --delete-empty-src-dirs
-    ;;
-    3)
-      gclone --config=$conf sync "$src" dst: $uflags
-    ;;
-    4)
-      gclone --config=$conf copy src: "$dst" $uflags
-    ;;
-    5)
-      continue
-    ;;
-    esac
-  ;;
-  9)
-    cecho y "Empty Trash option has been selected"
-    fsrc
-    gclone --config=$conf delete src: --drive-trashed-only=true --drive-use-trash=false --fast-list --verbose=2 --log-file $HOME/easyclone/log.txt
-    ;;
-  10)
-    cecho y "Delete Empty folders option has been selected"
-    fsrc
-    gclone --config=$conf rmdirs src: --leave-root --fast-list --log-file $HOME/easyclone/log.txt
-    ;;
-  11)
-    cecho y "Check option has been selected"
-    cat << EOF
+            if [ "$upload_option" == "4" ]; then
+                select_source_folder
+                read -e -p "Enter the path where you want to download files locally: " destination_path
+                destination_path="$(eval echo "$destination_path")"
+            fi
+            case $upload_option in
+                1)
+                    gclone --config=$CONFIG_FILE copy "$source_path" dst: $GCLONE_FLAGS
+                    ;;
+                2)
+                    gclone --config=$CONFIG_FILE move "$source_path" dst: $GCLONE_FLAGS --delete-empty-src-dirs
+                    ;;
+                3)
+                    gclone --config=$CONFIG_FILE sync "$source_path" dst: $GCLONE_FLAGS
+                    ;;
+                4)
+                    gclone --config=$CONFIG_FILE copy src: "$destination_path" $GCLONE_FLAGS
+                    ;;
+                5)
+                    continue
+                    ;;
+            esac
+            ;;
+        9)
+            cecho y "Empty Trash option has been selected"
+            select_source_folder
+            gclone --config=$CONFIG_FILE delete src: --drive-trashed-only=true --drive-use-trash=false --fast-list --verbose=2
+            log "INFO" "Trash emptied successfully"
+            ;;
+        10)
+            cecho y "Delete Empty folders option has been selected"
+            select_source_folder
+            gclone --config=$CONFIG_FILE rmdirs src: --leave-root --fast-list
+            log "INFO" "Empty folders deleted successfully"
+            ;;
+        11)
+            cecho y "Check option has been selected"
+            cat << EOF
 ┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 ┋1) Compare only Size
 ┋    (MD5/SHA1 is not considered here. Use this for a quick check)
@@ -403,33 +422,36 @@ EOF
 ┋    (Restart the script from Main Menu)
 ┋┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 EOF
-    echo
-    read -e -p "Choose the Comparison Mode : " opt
-    if [[ $opt -ne 4 ]]; then
-      fsrc
-      fdst
-    fi
-    case $opt in
-    1)
-      cecho b "Check / Compare only size option has been selected"
-      gclone --config=$conf check src: dst: -P --drive-server-side-across-configs --fast-list --size-only
-      ;;
-    2)
-      cecho b "Check / Compare size + MD5 option has been selected"
-      gclone --config=$conf check src: dst: -P --drive-server-side-across-configs --fast-list
-      ;;
-    3)
-      cecho b "Check / Compare locally downloaded date option has been selected"
-      gclone --config=$conf check src: dst: -P --drive-server-side-across-configs --fast-list --download
-      ;;
-    4)
-      continue
-      ;;
-    esac
-    ;;
-  12)
-    cecho y "Delete option has been selected"
-    cat << EOF
+            echo
+            read -e -p "Choose the Comparison Mode: " comparison_mode
+            if [[ $comparison_mode -ne 4 ]]; then
+                select_source_folder
+                select_destination_folder
+            fi
+            case $comparison_mode in
+                1)
+                    cecho b "Check / Compare only size option has been selected"
+                    gclone --config=$CONFIG_FILE check src: dst: -P --drive-server-side-across-configs --fast-list --size-only
+                    log "INFO" "Comparison completed. Only file sizes were compared."
+                    ;;
+                2)
+                    cecho b "Check / Compare size + MD5 option has been selected"
+                    gclone --config=$CONFIG_FILE check src: dst: -P --drive-server-side-across-configs --fast-list
+                    log "INFO" "Comparison completed. File sizes and MD5 hashes were compared."
+                    ;;
+                3)
+                    cecho b "Check / Compare locally downloaded data option has been selected"
+                    gclone --config=$CONFIG_FILE check src: dst: -P --drive-server-side-across-configs --fast-list --download
+                    log "INFO" "Comparison completed. Files were downloaded and compared locally."
+                    ;;
+                4)
+                    continue
+                    ;;
+            esac
+            ;;
+        12)
+            cecho y "Delete option has been selected"
+            cat << EOF
 ┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 ┋1) Delete
 ┋    (Delete the contents of path)
@@ -444,34 +466,38 @@ EOF
 ┋    (Restart the script from Main Menu)
 ┋┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉┉
 EOF
-    echo
-    read -e -p "Enter your input : " opt
-    if [[ $opt -ne 4 ]]; then
-      fsrc
-    fi
-    case $opt in
-    1)
-      cecho b "Delete / Default option has been selected"
-      gclone --config=$conf delete src: -vP --stats-one-line --stats=15s --fast-list --log-file $HOME/easyclone/log.txt
-      ;;
-    2)
-      cecho b "Delete / Deletet option has been selected"
-      gclone --config=$conf deletefile src: -vP --stats-one-line --stats=15s --fast-list --log-file $HOME/easyclone/log.txt
-      ;;
-    3)
-      cecho b "Delete / Purge option has been selected"
-      gclone --config=$conf purge src: -vP --stats-one-line --stats=15s --fast-list --log-file $HOME/easyclone/log.txt
-      ;;
-    4)
-      continue
-      ;;
+            echo
+            read -e -p "Enter your input: " delete_option
+            if [[ $delete_option -ne 4 ]]; then
+                select_source_folder
+            fi
+            case $delete_option in
+                1)
+                    cecho b "Delete / Default option has been selected"
+                    gclone --config=$CONFIG_FILE delete src: -vP --stats-one-line --stats=15s --fast-list
+                    log "INFO" "Deletion completed successfully"
+                    ;;
+                2)
+                    cecho b "Delete / Deletefile option has been selected"
+                    gclone --config=$CONFIG_FILE deletefile src: -vP --stats-one-line --stats=15s --fast-list
+                    log "INFO" "File deletion completed successfully"
+                    ;;
+                3)
+                    cecho b "Delete / Purge option has been selected"
+                    gclone --config=$CONFIG_FILE purge src: -vP --stats-one-line --stats=15s --fast-list
+                    log "INFO" "Purge completed successfully"
+                    ;;
+                4)
+                    continue
+                    ;;
+            esac
+            ;;
+        13)
+            log "INFO" "Script execution completed"
+            exit
+            ;;
     esac
-    ;;
-  13)
-    exit
-    ;;
-  esac
-  if [[ "$?" ]]; then
-      break
-  fi
+    if [[ "$?" ]]; then
+        break
+    fi
 done
