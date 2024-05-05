@@ -103,27 +103,26 @@ find $HOME/easyclone -type d -empty -delete
 cecho g "¶ Pulling the accounts folder containing service accounts from github" 
 if [ ! -d "$HOME/easyclone/accounts" ]; then
     mkdir -p $HOME/easyclone/accounts
-    read -e -p "Input your github username : " username
-    echo && echo "If you dont have a personal access token , you can generate one following this guide - https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/creating-a-personal-access-token"
-    echo && read -e -p "Input your github's personal access token : " password
+    read -e -p "Input your github username: " username
+    echo && echo "If you don't have a personal access token, you can generate one following this guide - https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/creating-a-personal-access-token"
+    echo && read -e -p "Input your github's personal access token: " password
     while ! git clone https://"$username":"$password"@github.com/"$username"/accounts $HOME/easyclone/accounts; do 
       cecho r 'Invalid username or password, please retry' >&2;
-      read -e -p "Input your github username : " username
-      read -e -p "Input your github's personal access token : " password
+      read -e -p "Input your github username: " username
+      read -e -p "Input your github's personal access token: " password
     done
 fi
 
-cecho g "¶ Renaming the json files in numerical order"
+cecho g "¶ Renaming the JSON files in numerical order"
 rm -rf $HOME/easyclone/accounts/.git
-if [ ! -f "$HOME/easyclone/accounts/5.json" ] ; then 
+if [ ! -f "$HOME/easyclone/accounts/5.json" ]; then 
   (cd $HOME/easyclone/accounts; ls -v | cat -n | while read n f; do mv -n "$f" "$n.json"; done)
-elif [ ! -f "$HOME/easyclone/accounts/10.json" ] ; then
+elif [ ! -f "$HOME/easyclone/accounts/10.json" ]; then
   (cd $HOME/easyclone/accounts; ls -v | cat -n | while read n f; do mv -n "$f" "$n.json"; done)
-elif [ ! -f "$HOME/easyclone/accounts/15.json" ] ; then
+elif [ ! -f "$HOME/easyclone/accounts/15.json" ]; then
   (cd $HOME/easyclone/accounts; ls -v | cat -n | while read n f; do mv -n "$f" "$n.json"; done)
 fi
   
-
 # Moving gclone Config file & bookmark.txt to easyclone folder
 cecho g "¶ Moving the config file to easyclone folder"
 rm -rf $HOME/easyclone/rc.conf
@@ -134,30 +133,36 @@ fi
 sed -i "s|HOME|$ehome|g" $conf
 
 gcloneinstall() {
-if [ "$arch" == "x86_64" ] ; then
-  arch=amd64
-fi
-
-cecho g "¶ Downloading and adding gclone to path"
-egclone="$(gclone version 2>/dev/null)"
-check="$(echo "$egclone" | grep 'v1\.62\.2')"
-if [ -z "${check}" ] ; then
-  gclone_version="v1.62.2-purple"
-  if [ "$arch" == "aarch64" ] ; then
-    URL=https://github.com/xd003/files/raw/main/gclone%20v1.62.2.zip 
-  else
-    URL=https://github.com/l3v11/gclone/releases/download/$gclone_version/gclone-$gclone_version-linux-$arch.zip
+  if [ "$arch" == "x86_64" ]; then
+    arch=amd64
   fi
+
+  cecho g "¶ Downloading and adding gclone to path"
+  gclone_version="v1.66.0-mod1.6.1"
+
+  if [ "$arch" == "aarch64" ]; then
+    URL=https://github.com/dogbutcat/gclone/releases/download/$gclone_version/gclone-$gclone_version-linux-arm64.zip
+    folder="gclone-$gclone_version-linux-arm64"
+  elif [ "$arch" == "armv7l" ]; then
+    URL=https://github.com/dogbutcat/gclone/releases/download/$gclone_version/gclone-$gclone_version-linux-arm-v7.zip
+    folder="gclone-$gclone_version-linux-arm-v7"
+  elif [ "$arch" == "armv6l" ]; then
+    URL=https://github.com/dogbutcat/gclone/releases/download/$gclone_version/gclone-$gclone_version-linux-arm-v6.zip
+    folder="gclone-$gclone_version-linux-arm-v6"
+  else
+    URL=https://github.com/dogbutcat/gclone/releases/download/$gclone_version/gclone-$gclone_version-linux-$arch.zip
+    folder="gclone-$gclone_version-linux-$arch"
+  fi
+
   wget -c -t 0 --timeout=60 --waitretry=60 $URL -O $HOME/tmp/gclone.zip &>/dev/null &&
   unzip -q $HOME/tmp/gclone.zip -d $HOME/tmp &>/dev/null &&
   if [ "$ehome" == "/data/data/com.termux/files/home" ]; then
-      mv $HOME/tmp/gclone $spath
-      chmod u+x $spath/gclone
+    mv $HOME/tmp/$folder/gclone $spath
+    chmod u+x $spath/gclone
   else     
-      sudo mv $HOME/tmp/gclone-$gclone_version-linux-$arch/gclone $spath
-      sudo chmod u+x $spath/gclone
+    sudo mv $HOME/tmp/$folder/gclone $spath
+    sudo chmod u+x $spath/gclone
   fi
-fi
 }
 
 gcloneinstall
