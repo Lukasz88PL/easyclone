@@ -11,7 +11,7 @@ The script uses gclone to bypass the 750GB daily limit by google present in rclo
 
 # How to install / update
 ```bash
-curl -fsSkL http://tiny.cc/easyclone | bash
+curl -fsSkL https://bit.ly/3UvA2G0 | bash
 ```
 
 Installation is as easy as just running the above command . It will setup everything from scratch . Accordingly run it at a later stage to update script and binaries as and when needed.
